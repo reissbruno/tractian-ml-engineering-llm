@@ -18,6 +18,9 @@ lib/
 lib64/
 parts/
 sdist/
+.claude
+CLAUDE.md
+.md*
 var/
 wheels/
 share/python-wheels/
