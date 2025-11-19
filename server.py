@@ -180,62 +180,6 @@ async def upload_documents_vectorized(
                 logger.warning(f"Nao foi possivel remover arquivo temporario {temp_path}: {e}")
 
 
-@app.post("/documents/upload")
-async def upload_document_async(
-    file: UploadFile = File(...),
-    processor: str = Form("fast"),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(lambda: User(id=1, user_name="test"))
-):
-    logger.info(f"Processor received: '{processor}' | File: {file.filename}")
-
-    if file.content_type != 'application/pdf':
-        raise HTTPException(status_code=400, detail=f"File {file.filename} is not a PDF")
-
-    doc_id = str(uuid.uuid4())
-    logger.info(f"Processing file: {file.filename}")
-    content = await file.read()
-
-    pdf_base64 = base64.b64encode(content).decode('utf-8')
-
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf', mode='wb')
-    temp_file.write(content)
-    temp_file.close()
-    file_path = temp_file.name
-
-    doc = Document(
-        id=doc_id,
-        user_id=current_user.id,
-        filename=file.filename,
-        file_path=None,
-        pdf_data=pdf_base64,
-        file_size=len(content),
-        status="processing",
-        created_at=datetime.utcnow()
-    )
-    db.add(doc)
-    db.commit()
-
-    # Only 'fast' processor is supported now
-    processor = 'fast'
-
-    # Note: This endpoint is deprecated. Use POST /documents instead for batch processing.
-    from src.services.document_processor_vectorized import process_single_document
-    asyncio.create_task(process_single_document(
-        file_path=file_path,
-        doc_id=doc_id,
-        user_id=current_user.id,
-        filename=file.filename,
-        processor=processor
-    ))
-
-    return {
-        "message": "Document received and processing started",
-        "doc_id": doc_id,
-        "status": "processing"
-    }
-
-
 @app.get("/documents/{doc_id}/progress")
 async def track_document_progress(doc_id: str):
     async def generate():
